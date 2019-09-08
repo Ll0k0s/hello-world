@@ -27,7 +27,7 @@
 
 * Далі вставляємо SD-карту в ВВХМ та підключаємо джерело живлення.
 
-* Переконуємось, що софтверний USB-хаб ID 1d6b:0104 Linux Foundation Multifunction Composite Gadget присутній.
+* Переконуємось, що софтверний USB-хаб *ID 1d6b:0104 Linux Foundation Multifunction Composite Gadget* присутній.
   Для цього виконуємо команду "lsusb"
 
 * Налаштовуємо IP адресс вручну (192.168.7.1/24). 
