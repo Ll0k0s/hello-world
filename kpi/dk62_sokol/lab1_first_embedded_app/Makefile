@@ -12,7 +12,7 @@ NAME2 = thread2
 all: clean build run
 
 clean:
-	rm -rf $(NAME1) $(NAME2)
+	rm -rf $(NAME1) $(NAME2) *.txt
 
 build: clean
 	$(CC) $(CFILES) $(CFLAG_O0) $(CFLAGS) -o $(NAME1)
