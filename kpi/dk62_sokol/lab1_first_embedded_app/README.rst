@@ -2,9 +2,7 @@
 Лабораторна робота №1
 =====================
 Хід роботи:
-
 -Ознайомитись з Reference Manual BBXM.
-
 -Розархівувати та записати на SD-карту операційну систему Debian Stretch for BeagleBoard.
 Виконується за допомогою команди:
 sudo sh -c "xz --decompress --keep --stdout bbxm-debian.img.xz | dd status=progress bs=4M of=/dev/mmcblk1; sync"
