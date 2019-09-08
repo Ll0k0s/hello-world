@@ -5,7 +5,7 @@ load_home:
 
 save:
 	git add .
-	git commit -m "+update"
+	git commit -m "+updates"
 	git push
 
 
