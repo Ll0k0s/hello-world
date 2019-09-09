@@ -12,8 +12,7 @@ int main(void)
 	int numb_cor_result = 0;
 	FILE *pFile;
 	pFile = fopen("result.txt", "w");
-	pthread_t a_thread;
-	pthread_t b_thread;
+	pthread_t a_thread, b_thread;
 	for(int k = 1; k <= 800; k++){
 		result *= 1.01;
 		printf("Test number = %i:\n", k);
