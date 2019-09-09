@@ -42,7 +42,7 @@ void *thread_function(void *arg)
 {
 	for (int i; i < result; i++){
 		cnt++;
-		usleep(1);
+		//usleep(1);
 	}
 }
 
