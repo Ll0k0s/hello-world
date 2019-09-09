@@ -41,7 +41,7 @@
 
 * Результати наведені нижче:
 
-.. image:: img/x86+sleep.png
+	.. image:: img/x86+sleep.png
 
 
   **Опис програми:**
