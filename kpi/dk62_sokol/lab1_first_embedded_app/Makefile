@@ -24,3 +24,8 @@ run:
 runO2:
 	./$(NAME2)
 
+plot:
+	gnuplot
+	[plot "result.txt" using 1:2 with linespoints]
+
+
