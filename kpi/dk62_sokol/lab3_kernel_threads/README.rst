@@ -87,37 +87,37 @@
   і якщо пам'ять не виділеться, тоді переходимо на ``Cnt_Error``, де буде виконуватись наступне:
 .. code-block::
 
-		printk(KERN_ERR "cnt hasn't memory\n");
-		kfree(cnt);
-		cnt = NULL;
+  printk(KERN_ERR "cnt hasn't memory\n");
+  kfree(cnt);
+  cnt = NULL;
 
   тобто, буде оголошено, що пам'ять не виділеться та очистимо пам'ять для цієї змінної. 
 
 * Аналогічно буде виконано і для виділення пам'яті під кожен потік:
 .. code-block::
 
-	t = kmalloc(sizeof(*t) * num_t, GFP_KERNEL);
-	if(t == NULL) {
-		goto Thread_Error;
-	}
+  t = kmalloc(sizeof(*t) * num_t, GFP_KERNEL);
+  if(t == NULL) {
+  	goto Thread_Error;
+  }
 
 * Як було сказано вище, кожен потік виконує функцію, яка виконує ітерацію глобальної змінної та після чого за допомогою ``shedule()`` змінюємо потік:
 .. code-block::
 
-	int *c = arg;
-	for(int j = 0; j < num_c; j++) {
-		*c += 1;
-		schedule();
-	}
+  int *c = arg;
+  for(int j = 0; j < num_c; j++) {
+  	*c += 1;
+  	schedule();
+  }
 
   * Після цього, виділяємо пам'ять під структуру для зберігання результату кожного потоку та оголошуємо помилку при невиділенні пам'яті:
 .. code-block::
 
-	ptr_res = kmalloc(sizeof(*ptr_res), GFP_KERNEL);
-	if(ptr_res == NULL) {
-		goto Struct_Error;
-	}
-	ptr_res->n = *c;
+  ptr_res = kmalloc(sizeof(*ptr_res), GFP_KERNEL);
+  if(ptr_res == NULL) {
+  	goto Struct_Error;
+  }
+  ptr_res->n = *c;
 
   та додаємо результат в список:
 .. code-block::
