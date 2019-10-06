@@ -3,16 +3,19 @@
 
 # this is what is used by Kbuild
 obj-m += src/firstmod.o
-
 obj-n += src/firstmod.ko
+
+threads = 4
+cycles = 50000
 
 # directory containing Makefile for kernel build
 KBUILDDIR := /lib/modules/$(shell uname -r)/build/
+EXTRA_CFLAGS:= -std=gnu11
 
-.PHONY: modules clean tidy run
+.PHONY: clean tidy modules run  
 all: build run
-build: clean modules
-run: run1 run2 run3
+build: tidy clean modules
+run: start stop show
 
 # recur to the original kernel Makefile with some additions
 modules:
@@ -31,11 +34,11 @@ clean:
 	-rm -f $(addsuffix .cmd,$(addprefix .,$(obj-m:.o=.mod.o)))
 
 
-run1:
-	sudo insmod $(obj-n)
-run2:
-	sudo dmesg -k | tail -30
-run3:
+start:
+	sudo insmod $(obj-n) num_t=$(threads) \ num_c=$(cycles)
+show:
+	sudo dmesg -k | tail -$$(( $(threads) + 2))
+stop:
 	sudo rmmod $(obj-n)
 
 

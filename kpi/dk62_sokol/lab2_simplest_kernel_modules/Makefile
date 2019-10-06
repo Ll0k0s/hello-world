@@ -3,13 +3,16 @@
 
 # this is what is used by Kbuild
 obj-m += src/firstmod.o
-
 obj-n += src/firstmod.ko
 
 # directory containing Makefile for kernel build
 KBUILDDIR := /lib/modules/$(shell uname -r)/build/
+EXTRA_CFLAGS:= -std=gnu11
 
-.PHONY: modules clean tidy
+.PHONY: clean tidy modules run  
+all: build run
+build: tidy clean modules
+run: start stop show
 
 # recur to the original kernel Makefile with some additions
 modules:
@@ -27,14 +30,15 @@ clean:
 	-rm -f $(addsuffix .cmd,$(addprefix .,$(obj-m:.o=.ko)))
 	-rm -f $(addsuffix .cmd,$(addprefix .,$(obj-m:.o=.mod.o)))
 
-run: run1 run2 run3
 
-run1:
+start:
+	sudo insmod $(obj-n)
+show:
+	sudo dmesg -k | tail -6
+	date '+DATE: %H:%M:%S'
+stop:
 	sudo rmmod $(obj-n)
-run2:
-	sudo insmod $(obj-n) username=Sokol
-run3:
-	sudo dmesg -k | tail -5
+
 
 
 

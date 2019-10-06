@@ -29,8 +29,7 @@ static int __init firstmod_init(void)
 static void __exit firstmod_exit(void)
 {
 	tasklet_kill(&name_tasklet);
-
-	printk(KERN_INFO "Long live the Kernel!\n");
+	printk(KERN_INFO "$$$ Long live the Kernel! $$$\n");
 }
 
 
