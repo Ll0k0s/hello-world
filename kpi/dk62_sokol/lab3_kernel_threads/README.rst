@@ -151,7 +151,7 @@
   kfree(cnt);
   kfree(t);
 
-* Результатом такої роботи зображено нижче для платформи ``х86``:
+* Результатом такої роботи зображено нижче для платформи ``х86`` :
 
 .. image:: img/lab3_x86-synhr.png
 
@@ -159,16 +159,86 @@
 
 .. image:: img/lab3_arm-synhr.png
 
-
-
-
-
+* Далі для створення синхронізації було створено функції lock()/unlock(). Для їх використання необхідно використовувати атомарні операції, тому було використано бібліотеку ``atomic.h`` . Для було створено атомарну змінну, яка має тип ``atomic_t`` :
 
 .. code-block::
+
+  atomic64_t *atom_arg = NULL;
+
+* Далі, для подальшої роботи, дану змінну необхідно ініціалізувати за допомогою функції ``new_atomic_arg`` :
+
 .. code-block::
+
+  static atomic64_t *new_atomic_arg(void)
+  {
+  	atomic64_t *arg = kmalloc(sizeof(*arg), GFP_KERNEL);
+  	atomic64_set(arg, 0);
+  	return arg;
+  }
+
+* Далі було створено функцію lock(), яка повинна блокувати доступ до певної частини коду, поки не буде оголошена функція unlock(), яка розблокує доступ. Функція ``lock()`` використовує атомарну операцію ``atomic64_add_return`` , яка сумує два значення. Принцип роботи функції такий: створюється нескінченний цикл, який буде виконуватись доти, поки не виконається сума аргумента arg та 1, і результатом суми буде одиниця:
+
 .. code-block::
+
+  static void lock(atomic64_t *arg)
+  {
+	while(atomic64_add_return(1, arg) != 1);
+  }
+
+* Результатом роботи використовуючи таку ітерацію:
+
 .. code-block::
+
+  for(int j = 0; j < num_c; j++) {
+		lock(atom_arg);
+		*c += 1;
+		unlock(atom_arg);
+		schedule();
+  }
+
+зображено нижче:
+
+.. image:: img/lab3_x86+synhr.png
+
+
+* У зв'язку з тим, що використовуючи синхронізацію на ВВХМ виникла помилка:
+
+.. image:: img/lab3_err.png
+
+* Звідси можна зробити висновок, що arm має іншу бібліотеку ``atomic.h`, тому для даної платформи було рохроблено трохи по іншому:
+
 .. code-block::
+
+  atomic64_t *atom_arg = NULL;
+
+  static atomic64_t *new_atomic_arg(void)
+  {
+	atomic64_t *arg = kmalloc(sizeof(*arg), GFP_KERNEL);
+	atomic64_set(arg, 0);
+	return arg;
+  }
+
+  static void del_atomic_arg(atomic64_t *arg)
+  {
+	kfree(arg);
+  }
+
+  static void lock(atomic64_t *arg)
+  {
+	while(atomic64_add_return(1, arg) != 1);
+  }
+
+  static void unlock(atomic64_t *arg)
+  {
+	atomic64_set(arg, 0);
+  }
+
+Тут можна побачити, що особливої різниці немає. Лише змінюється тип змінних на ``atomic64_t`` та назви функцій.
+
+* Результат роботи використовуючи функції lock()/unlock() для ``arm`` можна побачити нижче:
+
+.. image:: img/lab3_arm+synhr.png
+
 
 
 

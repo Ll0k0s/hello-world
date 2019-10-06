@@ -30,7 +30,7 @@ struct list_head *iter, *iter_safe;
 
 int *cnt = NULL;
 
-///////////////////////////
+/*//////////////////////////
 //for arm
 atomic64_t *atom_arg = NULL;
 
@@ -66,6 +66,11 @@ static atomic_t *new_atomic_arg(void)
 	return arg;
 }
 
+static void del_atomic_arg(atomic_t *arg)
+{
+	kfree(arg);
+}
+
 static void lock(atomic_t *arg)
 {
 	while(arch_atomic_add_return(1, arg) != 1);
@@ -75,7 +80,7 @@ static void unlock(atomic_t *arg)
 {
 	arch_atomic_set(arg, 0);
 }
-/*//////////////////////////
+///////////////////////////
 
 static int thread_func(void *arg)
 {
