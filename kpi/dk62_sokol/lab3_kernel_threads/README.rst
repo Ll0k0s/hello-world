@@ -119,7 +119,7 @@
   }
   ptr_res->n = *c;
 
-  та додаємо результат в список:
+та додаємо результат в список:
 .. code-block::
 
   list_add(&ptr_res->my_list, &my_res.my_list);
