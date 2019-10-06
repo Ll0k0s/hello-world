@@ -41,6 +41,11 @@ static atomic64_t *new_atomic_arg(void)
 	return arg;
 }
 
+static void del_atomic_arg(atomic64_t *arg)
+{
+	kfree(arg);
+}
+
 static void lock(atomic64_t *arg)
 {
 	while(atomic64_add_return(1, arg) != 1);
@@ -133,10 +138,9 @@ static int __init mod_init(void)
 static void __exit mod_exit(void)
 {
 	if(cnt) {
-		printk(KERN_NOTICE "cnt = %d\n", *cnt);
-		kfree(cnt);
+		printk(KERN_INFO "cnt = %d\n", *cnt);
 	} else {
-		printk(KERN_NOTICE "cnt =((((((\n");
+		printk(KERN_ERR "cnt is'n available\n");
 	}
 
 	list_for_each_safe(iter, iter_safe, &(my_res.my_list)) {
@@ -145,6 +149,11 @@ static void __exit mod_exit(void)
 		list_del(iter);
 		kfree(ptr_res);
 	}
+
+	del_atomic_arg(atom_arg);
+	kfree(cnt);
+	kfree(t);
+
 	printk(KERN_INFO "$$$ Finish $$$\n");
 }
 

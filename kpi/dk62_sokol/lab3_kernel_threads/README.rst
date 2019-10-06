@@ -137,7 +137,20 @@
 
   list_add(&ptr_res->my_list, &my_res.my_list);
 
+* Далі перед виходом необхідно роздрукувати результати ітерації потоків та видалити список:
+
 .. code-block::
+
+  list_for_each_safe(iter, iter_safe, &(my_res.my_list)) {
+	ptr_res = list_entry(iter, struct struct_result, my_list);
+	printk(KERN_NOTICE "list_num = %d", ptr_res->n);
+	list_del(iter);
+	kfree(ptr_res);
+  }
+
+
+
+
 .. code-block::
 .. code-block::
 .. code-block::
