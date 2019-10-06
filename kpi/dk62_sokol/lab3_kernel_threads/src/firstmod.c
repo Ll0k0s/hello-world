@@ -9,7 +9,7 @@
 
 MODULE_DESCRIPTION("Basic module demo: init, deinit, printk, jiffies");
 MODULE_AUTHOR("Yaroslav Sokol");
-MODULE_VERSION("0.1.2");
+MODULE_VERSION("0.2.1");
 MODULE_LICENSE("Dual MIT/GPL");		// this affects the kernel behavior
 
 static int num_t;
@@ -25,8 +25,8 @@ struct struct_result {
 	int n;
 };
 struct struct_result my_res, *ptr_res = NULL;
-struct list_head *iter, *iter_safe;
 struct task_struct **t = NULL;
+struct list_head *iter, *iter_safe;
 
 int *cnt = NULL;
 

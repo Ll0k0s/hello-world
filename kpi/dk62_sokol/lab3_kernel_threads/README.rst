@@ -32,7 +32,7 @@
   threads = 4
   cycles = 50000
 
-* Після цього 
+* Та в модулі ядра додаємо:
 .. code-block::
 
   static int num_t;
@@ -43,9 +43,93 @@
   module_param(num_c, int, 0);
   MODULE_PARM_DESC(num_c, "number cycles");
 
+* Створивши глобальну змінну:
+.. code-block::
 
+  int *cnt = NULL;
 
+  створюємо струкуру, яка буде мати список (використовуючи бібліотеку ``list.h`` ) та зберігати значення злобальної змінної ``cnt``:
+.. code-block::
 
+  struct struct_result {
+  	struct list_head my_list;
+  	int n;
+  };
+  struct struct_result my_res, *ptr_res = NULL;
+
+  та ініціалізуємо цей список:
+.. code-block::
+
+  INIT_LIST_HEAD(&my_res.my_list);
+
+* Далі створимо певну кількість потоків. Для цього використовуючи бібліотеку ``kthread.h`` створимо змінну потоку:
+.. code-block::
+
+  struct task_struct **t = NULL;
+
+  та інінціалізуємо кожен з потоків:
+.. code-block::
+
+	for(int i = 0; i < num_t; i++) {
+		t[i] = kthread_run(&thread_func,(void *)cnt, "_thread[%i]_", i);
+	}
+
+  , де thread_func - назва функції, яка буде виконуватись при створенні потоку, (void *)cnt - змінна.
+
+* Після цього необхідно виділити пам'ять для глобальної змінної:
+.. code-block::
+
+	cnt = kmalloc(sizeof(*cnt), GFP_KERNEL);
+	if(cnt == NULL) {
+		goto Cnt_Error;
+	}
+
+  і якщо пам'ять не виділеться, тоді переходимо на ``Cnt_Error``, де буде виконуватись наступне:
+.. code-block::
+
+		printk(KERN_ERR "cnt hasn't memory\n");
+		kfree(cnt);
+		cnt = NULL;
+
+  тобто, буде оголошено, що пам'ять не виділеться та очистимо пам'ять для цієї змінної. 
+
+* Аналогічно буде виконано і для виділення пам'яті під кожен потік:
+.. code-block::
+
+	t = kmalloc(sizeof(*t) * num_t, GFP_KERNEL);
+	if(t == NULL) {
+		goto Thread_Error;
+	}
+
+* Як було сказано вище, кожен потік виконує функцію, яка виконує ітерацію глобальної змінної та після чого за допомогою ``shedule()`` змінюємо потік:
+.. code-block::
+
+	int *c = arg;
+	for(int j = 0; j < num_c; j++) {
+		*c += 1;
+		schedule();
+	}
+
+  * Після цього, виділяємо пам'ять під структуру для зберігання результату кожного потоку та оголошуємо помилку при невиділенні пам'яті:
+.. code-block::
+
+	ptr_res = kmalloc(sizeof(*ptr_res), GFP_KERNEL);
+	if(ptr_res == NULL) {
+		goto Struct_Error;
+	}
+	ptr_res->n = *c;
+
+  та додаємо результат в список:
+.. code-block::
+
+  list_add(&ptr_res->my_list, &my_res.my_list);
+
+.. code-block::
+.. code-block::
+.. code-block::
+.. code-block::
+.. code-block::
+.. code-block::
 
 
 
