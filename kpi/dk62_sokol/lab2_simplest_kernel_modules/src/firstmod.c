@@ -16,8 +16,6 @@ module_param(username, charp, 0000);
 static void tasklet_func(unsigned long arg);
 DECLARE_TASKLET(name_tasklet, tasklet_func, (unsigned long)NULL);
 
-
-
 static int __init firstmod_init(void)
 {
 	tasklet_schedule(&name_tasklet);
