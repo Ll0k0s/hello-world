@@ -20,7 +20,7 @@
 * Перед їх використовуванням, необхідно спочатку їх ініціалізувати таким чином:
 .. code-block::
 
-DECLARE_TASKLET(name_tasklet, tasklet_func, (unsigned long)NULL);
+  DECLARE_TASKLET(name_tasklet, tasklet_func, (unsigned long)NULL);
 
 , де ''name_tasklet'' - назва тасклету, tasklet_func - назва функції, яка буде виконуватись, і останнім є аргумент, який передається(в нашому випоку нічого не передаємо).
 
