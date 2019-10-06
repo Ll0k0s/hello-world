@@ -34,11 +34,12 @@ clean:
 
 start:
 	sudo insmod $(obj-n) username=$(username)
+stop:
+	sudo rmmod $(obj-n)
+
 show:
 	sudo dmesg -k | tail -6
 	date '+DATE: %H:%M:%S'
-stop:
-	sudo rmmod $(obj-n)
 
 
 
