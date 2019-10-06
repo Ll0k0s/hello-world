@@ -22,3 +22,31 @@
 
 * Все промежуточные результаты описать и включить в отчет
 
+--------------------
+**Хід роботи:**
+
+* Для початку додамо дві змінні, які будуть вказувати на кількість потоків і на кількість інкрементацій. Для цього в ``Makefile`` додаємо дві змінні:
+.. code-block::
+  threads = 4
+  cycles = 50000
+
+* Після цього 
+.. code-block::
+  static int num_t;
+  module_param(num_t, int, 0);
+  MODULE_PARM_DESC(num_t, "number threads");
+
+  static int num_c;
+  module_param(num_c, int, 0);
+  MODULE_PARM_DESC(num_c, "number cycles");
+
+
+
+
+
+
+
+--------------------
+**Висновок:**
+
+
