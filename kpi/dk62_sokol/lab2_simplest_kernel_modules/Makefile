@@ -4,6 +4,7 @@
 # this is what is used by Kbuild
 obj-m += src/firstmod.o
 obj-n += src/firstmod.ko
+username = Sokol_Yaroslav
 
 # directory containing Makefile for kernel build
 KBUILDDIR := /lib/modules/$(shell uname -r)/build/
@@ -32,7 +33,7 @@ clean:
 
 
 start:
-	sudo insmod $(obj-n)
+	sudo insmod $(obj-n) username=$(username)
 show:
 	sudo dmesg -k | tail -6
 	date '+DATE: %H:%M:%S'
