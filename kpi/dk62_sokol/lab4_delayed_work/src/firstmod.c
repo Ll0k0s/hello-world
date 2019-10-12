@@ -27,8 +27,8 @@ struct result *work_ptr = NULL;
 struct result *timer_ptr = NULL;
 struct st_flags flags;
 struct task_struct **ptr_t = NULL;
-struct delayed_work work;
 struct timer_list timer;
+struct delayed_work work;
 
 static void list_print(struct list_head *name_list)
 {
