@@ -1,3 +1,6 @@
+/* Based on https://bit.ly/2kLBtD9 made by thodnev.
+//Some algorithms were taken from the Ostrianko
+*/
 #include <linux/module.h>
 #include <linux/moduleparam.h>
 #include <linux/kernel.h>
@@ -10,7 +13,7 @@
 MODULE_DESCRIPTION("Basic module demo: init, deinit, printk, jiffies");
 MODULE_AUTHOR("Yaroslav Sokol");
 MODULE_VERSION("0.2.1");
-MODULE_LICENSE("Dual MIT/GPL");		// this affects the kernel behavior
+MODULE_LICENSE("Dual MIT/GPL");
 
 static int num_t;
 module_param(num_t, int, 0);

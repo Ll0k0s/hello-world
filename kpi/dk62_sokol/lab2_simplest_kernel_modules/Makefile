@@ -10,7 +10,7 @@ username = Sokol_Yaroslav
 KBUILDDIR := /lib/modules/$(shell uname -r)/build/
 EXTRA_CFLAGS:= -std=gnu11
 
-.PHONY: clean tidy modules run  
+.PHONY: clean tidy modules run
 all: build run
 build: tidy clean modules
 run: start stop show
@@ -18,7 +18,6 @@ run: start stop show
 # recur to the original kernel Makefile with some additions
 modules:
 	$(MAKE) -C "$(KBUILDDIR)" M="$(PWD)" modules
-
 tidy:
 	$(MAKE) -C "$(KBUILDDIR)" M="$(PWD)" clean
 
@@ -30,17 +29,11 @@ clean:
 	-rm -f $(addsuffix .cmd,$(addprefix .,$(obj-m)))
 	-rm -f $(addsuffix .cmd,$(addprefix .,$(obj-m:.o=.ko)))
 	-rm -f $(addsuffix .cmd,$(addprefix .,$(obj-m:.o=.mod.o)))
-
-
 start:
 	sudo insmod $(obj-n) username=$(username)
 stop:
 	sudo rmmod $(obj-n)
-
 show:
 	sudo dmesg -k | tail -6
 	date '+DATE: %H:%M:%S'
-
-
-
 

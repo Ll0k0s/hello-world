@@ -4,8 +4,7 @@
 obj-m += src/firstmod.o
 obj-n += src/firstmod.ko
 
-threads = 4
-cycles = 50000
+main_code = 20
 
 # directory containing Makefile for kernel build
 KBUILDDIR := /lib/modules/$(shell uname -r)/build/
@@ -15,6 +14,7 @@ EXTRA_CFLAGS:= -std=gnu11
 all: build run
 build: tidy clean modules
 run: start stop show
+stop+: stop show
 
 # recur to the original kernel Makefile with some additions
 modules:
@@ -30,9 +30,10 @@ clean:
 	-rm -f $(addsuffix .cmd,$(addprefix .,$(obj-m:.o=.ko)))
 	-rm -f $(addsuffix .cmd,$(addprefix .,$(obj-m:.o=.mod.o)))
 start:
-	sudo insmod $(obj-n) num_t=$(threads) \ num_c=$(cycles)
+	sudo insmod $(obj-n)
 show:
-	sudo dmesg -k | tail -$$(( $(threads) + 2))
+	sudo dmesg -k | tail -$$(( $(main_code) + 2))
 stop:
 	sudo rmmod $(obj-n)
+
 
