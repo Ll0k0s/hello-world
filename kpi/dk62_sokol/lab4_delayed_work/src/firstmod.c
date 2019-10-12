@@ -132,7 +132,6 @@ static void __exit mod_exit(void)
 		del_timer_sync(&timer);
 	}
 
-
 	kfree(ptr_t);
 	list_destroy(&res_list1.list);
 	list_destroy(&res_list2.list);
