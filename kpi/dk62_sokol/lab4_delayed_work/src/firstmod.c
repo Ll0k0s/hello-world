@@ -23,8 +23,8 @@ struct st_flags {
 };
 
 struct result res_list1, res_list2;
-struct result *work_func_st_p = NULL;
-struct result *timer_func_st_p = NULL;
+struct result *work_ptr = NULL;
+struct result *timer_ptr = NULL;
 struct st_flags flags;
 struct task_struct **ptr_t = NULL;
 struct delayed_work work;
@@ -60,7 +60,7 @@ void work_func(struct work_struct *data)
 		printk(KERN_INFO "Timer stopiing: %li (%li)\n", jiffies, jiffies % 11);
 		flags.work_run = 0;		
 	} else {
-		list_add_arg(work_func_st_p, &res_list1.list, jiffies);
+		list_add_arg(work_ptr, &res_list1.list, jiffies);
 		schedule_delayed_work(&work, 17);
 	}
 }
@@ -71,7 +71,7 @@ void timer_func(struct timer_list *data)
 		printk(KERN_INFO "Work stopping:  %li (%li)\n", jiffies, jiffies % 11);
 		flags.timer_run = 0;
 	} else {
-		list_add_arg(timer_func_st_p, &res_list2.list, jiffies);
+		list_add_arg(timer_ptr, &res_list2.list, jiffies);
 		mod_timer(&timer, jiffies + 17);
 	}
 }

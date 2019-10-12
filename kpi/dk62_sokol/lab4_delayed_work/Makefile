@@ -4,8 +4,6 @@
 obj-m += src/firstmod.o
 obj-n += src/firstmod.ko
 
-main_code = 20
-
 # directory containing Makefile for kernel build
 KBUILDDIR := /lib/modules/$(shell uname -r)/build/
 EXTRA_CFLAGS:= -std=gnu11
@@ -32,7 +30,7 @@ clean:
 start:
 	sudo insmod $(obj-n)
 show:
-	sudo dmesg -k | tail -$$(( $(main_code) + 2))
+	sudo dmesg -k | tail 34
 stop:
 	sudo rmmod $(obj-n)
 
