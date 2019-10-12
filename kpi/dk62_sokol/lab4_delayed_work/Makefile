@@ -30,7 +30,7 @@ clean:
 start:
 	sudo insmod $(obj-n)
 show:
-	sudo dmesg -k | tail 34
+	sudo dmesg -k | tail -34
 stop:
 	sudo rmmod $(obj-n)
 

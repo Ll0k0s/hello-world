@@ -76,15 +76,15 @@ void timer_func(struct timer_list *data)
 	}
 }
 
-int first_th_func(void *data)
-{	
+static int t_func1(void *data)
+{
 	while (flags.timer_run) {
 		schedule();
 	}
 	return 0;
 }
 
-int second_th_func(void *data)
+static int t_func2(void *data)
 {
 	while (flags.work_run) {
 		schedule();
@@ -102,12 +102,12 @@ static int __init mod_init(void)
 	ptr_t = kmalloc(sizeof(*ptr_t) * 2, GFP_KERNEL);	
 
 	flags.work_run = 1;
-	ptr_t[1] = kthread_run(&second_th_func, NULL, "thread_1");
+	ptr_t[1] = kthread_run(&t_func2, NULL, "thread_1");
 	INIT_DELAYED_WORK(&work, work_func);
-	schedule_delayed_work(&work, 17);
+	schedule_delayed_work(&work, 1);
 
 	flags.timer_run = 1;
-	ptr_t[0] = kthread_run(&first_th_func, NULL, "thread_0");
+	ptr_t[0] = kthread_run(&t_func1, NULL, "thread_0");
 	timer_setup(&timer, &timer_func, 0);
 	mod_timer(&timer, jiffies + 1);
 

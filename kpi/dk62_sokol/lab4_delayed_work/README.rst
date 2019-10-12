@@ -48,21 +48,20 @@
 
 .. code-block::
 
-	INIT_LIST_HEAD(&res_list1.list);
-	INIT_LIST_HEAD(&res_list2.list);
+  INIT_LIST_HEAD(&res_list1.list);
+  INIT_LIST_HEAD(&res_list2.list);
 
 - Для роботи з цими списками було використано структуру result:
 
 .. code-block::
 
-	struct result {
-		struct list_head list;
-		long int num;
-	};
-
-	struct result res_list1, res_list2;
-	struct result *work_ptr = NULL;
-	struct result *timer_ptr = NULL;
+  struct result {
+	struct list_head list;
+	long int num;
+  };
+  struct result res_list1, res_list2;
+  struct result *work_ptr = NULL;
+  struct result *timer_ptr = NULL;
 
 - Далі необхідно створити 2 потоки та виділити для них пам'ять. Перший потік необхідний для підтримки таймера, а другий для - workueue.
 
@@ -78,19 +77,90 @@
 
   * Примітка: Оскільки замикання таймерів може перенести таймер з центрального процесора на інший, закріплені таймери не гарантовано залишаються на початково вибраному процесорі. Вони переміщуються до центрального процесора, на який функція enqueue викликається через mod_timer () або add_timer (). Якщо таймер слід розмістити на певному процесорі, тоді слід використовувати add_timer_on ().
 
-11
+.. code-block::
+
+  timer_setup(&timer, &timer_func, 0);
+
+- Далі викорисовуємо функцію mod_timer. Вона використовується для того, щоб змінити час закінчення терміну дії таймера. В нашому випадку таймер буде діяти 1 jieffies:
+
+.. code-block::
+
+  mod_timer(&timer, jiffies + 1);
+
+- Для регулювання ввімкнення таймера та workueue використовуються 2 флаги:
+
+.. code-block::
+
+  struct st_flags {
+	bool timer_run;
+	bool work_run;
+  };
+  struct st_flags flags;
+
+- Створивши потік для таймера, необхідно зборити так, щоб коли jiffies кратне 11 потік зупинявся, а в іншому випадку потік повинен перезапустити себе через 17 jieffies, тому:
+
+.. code-block::
+
+  static int t_func1(void *data)
+  {
+	while (flags.timer_run) {
+		schedule();
+	}
+	return 0;
+  }
+
+  void timer_func(struct timer_list *data)
+  {
+	if ((jiffies % 11) == 0) {
+		printk(KERN_INFO "Work stopping:  %li (%li)\n", jiffies, jiffies % 11);
+		flags.timer_run = 0;
+	} else {
+		list_add_arg(timer_ptr, &res_list2.list, jiffies);
+		mod_timer(&timer, jiffies + 17);
+	}
+  }
+
+- Для операцій зі списком було додано 3 функції:
+  list_add_arg() - додавання аргумента до списку:
+
+.. code-block::
+
+  static void list_add_arg(struct result *res, struct list_head *list_name, long int arg)
+  {
+	res = kmalloc(sizeof(*res), GFP_ATOMIC);
+	res->num = arg;
+	list_add(&res->list, list_name);		
+  }
+
+  list_print - роздрукувати список
+
+.. code-block::
+
+  static void list_print(struct list_head *name_list)
+  {
+	struct result *temp;
+	list_for_each_entry(temp, name_list, list) {
+		printk(KERN_NOTICE "list_arg = %li (%li)", temp->num, temp->num % 11);
+	}
+  }
+
+  та list_destroy - зруйнувати(видалити) список
+
+.. code-block::
+
+  static void list_destroy(struct list_head *name_list)
+  {
+	struct result *cursor, *tmp;
+	list_for_each_entry_safe(cursor, tmp, name_list, list) {
+		list_del(&cursor->list);
+		kfree(cursor);
+	}
+  }
 
 
 
-timer_setup(&timer, &timer_func, 0);
 
-.. code-block::
-.. code-block::
-.. code-block::
-.. code-block::
-.. code-block::
-.. code-block::
-.. code-block::
+
 .. code-block::
 .. code-block::
 .. code-block::
