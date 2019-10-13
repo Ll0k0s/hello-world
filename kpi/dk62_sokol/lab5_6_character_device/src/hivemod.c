@@ -13,7 +13,6 @@ MODULE_AUTHOR("thodnev");
 MODULE_VERSION("0.1");
 MODULE_LICENSE("Dual MIT/GPL");
 
-
 /**
  * MOD_DEBUG(level, fmt, ...) - module debug printer
  * @level: printk debug level (e.g. KERN_INFO)
