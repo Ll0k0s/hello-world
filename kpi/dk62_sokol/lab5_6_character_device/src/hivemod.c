@@ -13,6 +13,7 @@ MODULE_AUTHOR("thodnev");
 MODULE_VERSION("0.1");
 MODULE_LICENSE("Dual MIT/GPL");
 
+
 /**
  * MOD_DEBUG(level, fmt, ...) - module debug printer
  * @level: printk debug level (e.g. KERN_INFO)
@@ -179,7 +180,7 @@ static int cdev_release(struct inode *inode, struct file *file)
  * @count:
  * @loff:
  */
-static ssize_t cdev_read(struct file *file, char __user *buf, 
+static ssize_t cdev_read(struct file *file, char __user *buf,
 			 size_t count, loff_t *loff)
 {
 	struct hive_flist_item *item = hive_flist_get(file);
@@ -247,7 +248,7 @@ static void module_cleanup(void)
 static int __init cdevmod_init(void)
 {
 	int err = 0;
-	
+
 	if (0 == major) {
 		// use dynamic allocation (automatic)
 		err = alloc_chrdev_region(&hive_dev, 0, 1, devname);
@@ -284,12 +285,12 @@ err_handler:
 	module_cleanup();
 	return err;
 }
- 
+
 static void __exit cdevmod_exit(void)
 {
 	module_cleanup();
 	MOD_DEBUG(KERN_DEBUG, "All honey reclaimed");
 }
- 
+
 module_init(cdevmod_init);
 module_exit(cdevmod_exit);
