@@ -18,12 +18,16 @@
 - **Red-Black Treee:**
 - Для початку було зроблено замість списку дерево(Red-Black Treee). Для цього необхідно ініціалізувати його таким чином:
 
-struct rb_root my_tree = RB_ROOT;
+.. code-block::
+
+  struct rb_root my_tree = RB_ROOT;
 
 - Далі необхідно створити самі вузли цього дерева. Для цього було реалізовано функцію static int rb_insert(). Його стуктура описана нижче:
 
-static int rb_insert(struct rb_root *root, struct ftree_item *item)
-{
+.. code-block::
+
+  static int rb_insert(struct rb_root *root, struct ftree_item *item)
+  {
 	struct rb_node **new = &(root->rb_node), *parent = NULL;
 	while (*new) {
 		struct ftree_item *this = container_of(*new, struct ftree_item, node);
@@ -39,23 +43,27 @@ static int rb_insert(struct rb_root *root, struct ftree_item *item)
 	rb_link_node(&item->node, parent, new);
 	rb_insert_color(&item->node, root);
 	return 0;
-}
+  }
 
 - Далі для роботи з файлом маємо таку структуру:
 
-struct ftree_item {
+.. code-block::
+
+  struct ftree_item {
 	struct rb_node node;
 	struct file *file;
 	char *buffer;
 	long length;
 	long rdoffset;
 	long wroffset;
-};
+  };
 
 - Тому для цієї структури необхідно спочатку виділити пам'ять та обнулити всі данні(нам необіхно було виділити пам'ять так, щоб вона була встановлена на нуль, тому використовуємо ``kzalloc`` ):
 
-static inline struct ftree_item *ftree_new(void)
-{
+.. code-block::
+
+  static inline struct ftree_item *ftree_new(void)
+  {
 	struct ftree_item *item = kzalloc(sizeof *item, GFP_KERNEL);
 	if (NULL == item) {
 		return NULL;
@@ -65,23 +73,27 @@ static inline struct ftree_item *ftree_new(void)
 	item->rdoffset = 0;
 	item->wroffset = 0;
 	return item;
-}
+  }
 
 - При закриванні файлу одним необхідно буде видалення пам'яті, тому для цього реалізовуємо наступну функцію:
 
-static inline void ftree_rm(struct ftree_item *item)
-{
+.. code-block::
+
+  static inline void ftree_rm(struct ftree_item *item)
+  {
 	if (NULL == item)
 		return;
 	rb_erase(&item->node, &my_tree);
 	kfree(item->buffer);
 	kfree(item);
-}
+  }
 
 - Також під час роботи необхідно буде реалізовуати пошук даного дерева, тому для цього використовується наступна функція:
 
-static struct ftree_item *ftree_get(struct rb_root *root, struct file *file)
-{
+.. code-block::
+
+  static struct ftree_item *ftree_get(struct rb_root *root, struct file *file)
+  {
 	struct rb_node *node = root->rb_node;
 	while (node) {
 		struct ftree_item *data = container_of(node, struct ftree_item, node);
@@ -95,13 +107,15 @@ static struct ftree_item *ftree_get(struct rb_root *root, struct file *file)
 		}
 	}
 	return NULL;
-}
+  }
 
 - **Робота з файловими функціями:**
 
 - Для роботи з файлами реалізовано 6 функцій, тому для їх виклику було реалізовано структуру, яка має масив вказівників на різні функції:
 
-static struct file_operations hive_fops = {
+.. code-block::
+
+  static struct file_operations hive_fops = {
 	.open = &cdev_open,
 	.release = &cdev_release,
 	.read =	&cdev_read,
@@ -110,12 +124,14 @@ static struct file_operations hive_fops = {
 	.llseek = &cdev_llseek,
 	// required to prevent module unloading while fops are in use
 	.owner = THIS_MODULE,
-};
+  };
 
 - Під час відкривання файлу спочатку необхідно створити власне дерево, ініціалізації структурних файлових даних:
 
-static int cdev_open(struct inode *inode, struct file *file)
-{
+.. code-block::
+
+  static int cdev_open(struct inode *inode, struct file *file)
+  {
 	struct ftree_item *item = ftree_new();
 	if (NULL == item) {
 		MOD_DEBUG(KERN_ERR, "Buffer allocate failed for %p", file);
@@ -129,12 +145,14 @@ static int cdev_open(struct inode *inode, struct file *file)
 		MOD_DEBUG(KERN_DEBUG, "New file not created");
 	}
 	return 0;
-}
+  }
 
 -Для закривання файлу реалізовується наступна функція:
 
-static int cdev_release(struct inode *inode, struct file *file)
-{
+.. code-block::
+
+  static int cdev_release(struct inode *inode, struct file *file)
+  {
 	struct ftree_item *item = ftree_get(&my_tree, file);
 	if (NULL == item)
 		return -EBADF;
@@ -142,13 +160,15 @@ static int cdev_release(struct inode *inode, struct file *file)
 	ftree_rm(item);
 	MOD_DEBUG(KERN_DEBUG, "File entry %p unlinked", file);
 	return 0;
-}
+  }
 
 - Для запису спочатку виділяється пам'ять для запису рядка, після чого за допомогою ``copy_from_user()`` копіюємо блок даних із простору користувача в постір ядра і в кінці зсовуємо курсор та записуємо його довжину:
 
-static ssize_t cdev_write(struct file *file, const char __user *buf,
+.. code-block::
+
+  static ssize_t cdev_write(struct file *file, const char __user *buf,
 			  size_t count, loff_t *loff)
-{
+  {
 	struct ftree_item *item = ftree_get(&my_tree, file);
 	if (NULL == item) {
 		MOD_DEBUG(KERN_DEBUG, "Write ERROR");
@@ -173,13 +193,15 @@ static ssize_t cdev_write(struct file *file, const char __user *buf,
 		item->length = *loff;
 	}
 	return count;
-}
+  }
 
 - Для зчитування виконуємо зворотню функцію copy_to_user(), яка копіює блок даних із простору ядра в простір користувача відносно значення ``loff_t *loff``. 
 
-static ssize_t cdev_read(struct file *file, char __user *buf,
+.. code-block::
+
+  static ssize_t cdev_read(struct file *file, char __user *buf,
 			 size_t count, loff_t *loff)
-{
+  {
 	struct ftree_item *item = ftree_get(&my_tree, file);
 	if (NULL == item) {
 		return -EBADF;
@@ -197,12 +219,14 @@ static ssize_t cdev_read(struct file *file, char __user *buf,
 	}
 	*loff += count;
 	return count;
-}
+  }
 
 - Далі було реалізовано функцію ``cdev_llseek()``, за допомогою якої можна змінити місце курсора:
 
-static loff_t cdev_llseek(struct file *file, loff_t offset, int origin)
-{
+.. code-block::
+
+  static loff_t cdev_llseek(struct file *file, loff_t offset, int origin)
+  {
 	struct ftree_item *item = ftree_get(&my_tree, file);
 	if (NULL == item)
 		return -EBADF;
@@ -227,15 +251,17 @@ static loff_t cdev_llseek(struct file *file, loff_t offset, int origin)
 	}
 	file->f_pos = newpos;
 	return newpos;
-}
+  }
 
 - Останньою функцією є ``cdev_ioctl()``. За допомогою неї можна з викликом макроса LENGTH можна завантажити розмір буфера, і за допомогою BUFFER виконується завантаження самого рядка(буфера) із простору користувача. Для такої реалізації було використано ``_IOW`` (перший аргумент описує до якої підсистеми застосовується ``ioctl``, другий аргумент ідентифікує ``ioctl``, третім аргументом є типом переданого параметру):
 
-#define LENGTH _IOW('i', 0, int *)
-#define BUFFER _IOW('i', 1, char *)
+.. code-block::
 
-static long cdev_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
-{
+  #define LENGTH _IOW('i', 0, int *)
+  #define BUFFER _IOW('i', 1, char *)
+
+  static long cdev_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
+  {
 	struct ftree_item *item = ftree_get(&my_tree, file);
 	if (NULL == item)
 		return -EBADF;
@@ -263,12 +289,14 @@ static long cdev_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 		return -ENOTTY;
 	}
 	return 0;
-}
+  }
 
 - В кінці необхідно прибирати за собою, тому для цього виконуємо наступне:
 
-static void module_cleanup(void)
-{
+.. code-block::
+
+  static void module_cleanup(void)
+  {
 	// notice: deallocations happen in *reverse* order
 	if(alloc_flags.dev_registered) {
 		device_destroy(hive_class, hive_dev);
@@ -292,24 +320,25 @@ static void module_cleanup(void)
 		ftree_rm(item);
 		rbp = rb_next(rbp);
 	}
-}
+  }
 
 - В кінці було додано для створення класу пристроїв та створення пристрою і його реалізації за допомогою sysfs:
+
+.. code-block::
 	
-static struct class *hive_class = NULL;
+  static struct class *hive_class = NULL;
 
-
-if ((hive_class = class_create(THIS_MODULE, "hive_class")) == NULL) {
+  if ((hive_class = class_create(THIS_MODULE, "hive_class")) == NULL) {
 	unregister_chrdev_region(hive_dev, 1);
 	return -1;
-}
-alloc_flags.class_created = 1;
-if (device_create(hive_class, NULL, hive_dev, NULL, "hive_dev") == NULL) {
+  }
+  alloc_flags.class_created = 1;
+  if (device_create(hive_class, NULL, hive_dev, NULL, "hive_dev") == NULL) {
 	class_destroy(hive_class);
 	unregister_chrdev_region(hive_dev, 1);
 	return -1;
-}
-alloc_flags.dev_registered = 1;
+  }
+  alloc_flags.dev_registered = 1;
 
 - Було додали тестовий файл, те було протестовано флаги, запису/зчитування, відкривання/закривання файлу, та запис за допомогою функції ioctl(). Результати можна побачити нижче:
 
