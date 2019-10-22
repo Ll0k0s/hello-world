@@ -1,190 +1,318 @@
 =====================
-Лабораторна робота №4
+Лабораторна робота №5_6
 =====================
 **Завдання:**
 
-- За основу можно взять код из предыдущей лабораторной
+- Виконати ``TODO`` (доробити функції cdev_read, cdev_write, і т.д.).
 
+- Написати тестовий файл для перевірки роботоздатності функцій.
 
 --------------------
 
-**Коротко про workqueue:**
-
-- ``workqueue`` є дуже схожими з ``tasklet`` .
-
-- Вони можуть служити для обробки переривань,
-
-- виконуються в контексті ``kernel`` - процеса, тому вони не обов'язково можуть бути атомарними
-
-- можуть використовувати функції для синхронізації
-
-- такі функції можуть спати
 
 --------------------
 
 **Хід роботи:**
 
-- Для початку було побудовано 2 зв'язані списки, тому для цього, як і в минулій лабораторній роботі їх було ініціалізово:
 
-.. code-block::
+- **Red-Black Treee:**
+- Для початку було зроблено замість списку дерево(Red-Black Treee). Для цього необхідно ініціалізувати його таким чином:
 
-  INIT_LIST_HEAD(&res_list1.list);
-  INIT_LIST_HEAD(&res_list2.list);
+struct rb_root my_tree = RB_ROOT;
 
-- Для роботи з цими списками було використано структуру ``result`` :
+- Далі необхідно створити самі вузли цього дерева. Для цього було реалізовано функцію static int rb_insert(). Його стуктура описана нижче:
 
-.. code-block::
+static int rb_insert(struct rb_root *root, struct ftree_item *item)
+{
+	struct rb_node **new = &(root->rb_node), *parent = NULL;
+	while (*new) {
+		struct ftree_item *this = container_of(*new, struct ftree_item, node);
+		int result = memcmp(item->file, this->file, sizeof(struct file));
+		parent = *new;
+		if (result < 0) {
+			new = &((*new)->rb_left);
+		} else if (result > 0) {
+			new = &((*new)->rb_right);
+		} else
+			return 1;
+	}
+	rb_link_node(&item->node, parent, new);
+	rb_insert_color(&item->node, root);
+	return 0;
+}
 
-  struct result {
-	struct list_head list;
-	long int num;
-  };
-  struct result res_list1, res_list2;
-  struct result *work_ptr = NULL;
-  struct result *timer_ptr = NULL;
+- Далі для роботи з файлом маємо таку структуру:
 
-- Далі необхідно створити 2 потоки та виділити для них пам'ять. Перший потік необхідний для підтримки таймера, а другий для - ``workqueue`` .
+struct ftree_item {
+	struct rb_node node;
+	struct file *file;
+	char *buffer;
+	long length;
+	long rdoffset;
+	long wroffset;
+};
 
-- Для створення таймера використовується функція ``timer_setup()`` , який має 3 аргументи(відповідний таймер; функція, яка виконується при закінченні таймера; будь-які прапорці ``TIMER_``). Маються такі прапорці:
+- Тому для цієї структури необхідно спочатку виділити пам'ять та обнулити всі данні(нам необіхно було виділити пам'ять так, щоб вона була встановлена на нуль, тому використовуємо ``kzalloc`` ):
 
-  * ``TIMER_DEFERRABLE`` : таймер, що відкладається, буде працювати нормально, коли система зайнята, але не призведе до того, що процесор вийде з режиму очікування просто для його обслуговування; натомість таймер буде обслуговуватися, коли процесор врешті-решт прокинеться з наступним таймером, який не відкладається.
+static inline struct ftree_item *ftree_new(void)
+{
+	struct ftree_item *item = kzalloc(sizeof *item, GFP_KERNEL);
+	if (NULL == item) {
+		return NULL;
+	}
+	item->buffer = NULL;
+	item->length = 0;
+	item->rdoffset = 0;
+	item->wroffset = 0;
+	return item;
+}
 
-  * ``TIMER_IRQSAFE`` : Таймер ``irqsafe`` виконується з відключеним ``IRQ`` , і безпечно чекає завершення запущеного примірника від обробників ``IRQ`` , наприклад, викликавши ``del_timer_sync()`` .
- 
-  * Примітка: Виконання відключеного виклику ``irq`` - це особливий випадок, коли виникає проблема блокування робочих черг. Він не призначений для виконання випадкових лайнів із відключеннями переривань. Зловживання контролюються!
+- При закриванні файлу одним необхідно буде видалення пам'яті, тому для цього реалізовуємо наступну функцію:
 
-  * ``TIMER_PINNED`` : На закріплений таймер, не впливатиме ніяка евристика розміщення таймера (наприклад, ``NOHZ`` ) і завжди закінчується в процесорі, на якому був задіяний таймер.
+static inline void ftree_rm(struct ftree_item *item)
+{
+	if (NULL == item)
+		return;
+	rb_erase(&item->node, &my_tree);
+	kfree(item->buffer);
+	kfree(item);
+}
 
-  * Примітка: Оскільки замикання таймерів може перенести таймер з центрального процесора на інший, закріплені таймери не гарантовано залишаються на початково вибраному процесорі. Вони переміщуються до центрального процесора, на який функція ``enqueue`` викликається через ``mod_timer()`` або ``add_timer()`` . Якщо таймер слід розмістити на певному процесорі, тоді слід використовувати ``add_timer_on()`` .
+- Також під час роботи необхідно буде реалізовуати пошук даного дерева, тому для цього використовується наступна функція:
 
-.. code-block::
-  struct timer_list timer;
-  timer_setup(&timer, &timer_func, 0);
+static struct ftree_item *ftree_get(struct rb_root *root, struct file *file)
+{
+	struct rb_node *node = root->rb_node;
+	while (node) {
+		struct ftree_item *data = container_of(node, struct ftree_item, node);
+		int result = memcmp(data->file, file, sizeof(file));
+		if (result < 0) {
+			node = node->rb_left;
+		} else if (result > 0) {
+			node = node->rb_right;
+		} else {
+			return data;
+		}
+	}
+	return NULL;
+}
 
-- Далі викорисовуємо функцію ``mod_timer()`` . Вона використовується для того, щоб змінити час закінчення терміну дії таймера. В нашому випадку таймер буде діяти 1 ``jiffies`` :
+- **Робота з файловими функціями:**
 
-.. code-block::
+- Для роботи з файлами реалізовано 6 функцій, тому для їх виклику було реалізовано структуру, яка має масив вказівників на різні функції:
 
-  mod_timer(&timer, jiffies + 1);
+static struct file_operations hive_fops = {
+	.open = &cdev_open,
+	.release = &cdev_release,
+	.read =	&cdev_read,
+	.write = &cdev_write,
+	.unlocked_ioctl = &cdev_ioctl,
+	.llseek = &cdev_llseek,
+	// required to prevent module unloading while fops are in use
+	.owner = THIS_MODULE,
+};
 
-- Для регулювання ввімкнення таймера та ``workqueue`` використовуються 2 флаги:
+- Під час відкривання файлу спочатку необхідно створити власне дерево, ініціалізації структурних файлових даних:
 
-.. code-block::
-
-  struct st_flags {
-	bool timer_run;
-	bool work_run;
-  };
-  struct st_flags flags;
-
-- Створивши потік для таймера, необхідно зборити так, щоб коли ``jiffies`` кратне 11 - потік зупинявся, а в іншому випадку потік повинен перезапустити себе через 17 ``jiffies``, тому потік та таймер мають відповідні функції:
-
-.. code-block::
-
-  static int t_func1(void *data)
-  {
-	while (flags.timer_run) {
-		schedule();
+static int cdev_open(struct inode *inode, struct file *file)
+{
+	struct ftree_item *item = ftree_new();
+	if (NULL == item) {
+		MOD_DEBUG(KERN_ERR, "Buffer allocate failed for %p", file);
+		return -ENOMEM;
+	}
+	// fill the rest
+	item->file = file;
+	if(!rb_insert(&my_tree, item)) {
+		MOD_DEBUG(KERN_DEBUG, "New file entry %p created", file);
+	} else {
+		MOD_DEBUG(KERN_DEBUG, "New file not created");
 	}
 	return 0;
-  }
+}
 
-  void timer_func(struct timer_list *data)
-  {
-	if ((jiffies % 11) == 0) {
-		printk(KERN_INFO "Work stopping:  %li (%li)\n", jiffies, jiffies % 11);
-		flags.timer_run = 0;
-	} else {
-		list_add_arg(timer_ptr, &res_list2.list, jiffies);
-		mod_timer(&timer, jiffies + 17);
+-Для закривання файлу реалізовується наступна функція:
+
+static int cdev_release(struct inode *inode, struct file *file)
+{
+	struct ftree_item *item = ftree_get(&my_tree, file);
+	if (NULL == item)
+		return -EBADF;
+	// remove item from list and free its memory
+	ftree_rm(item);
+	MOD_DEBUG(KERN_DEBUG, "File entry %p unlinked", file);
+	return 0;
+}
+
+- Для запису спочатку виділяється пам'ять для запису рядка, після чого за допомогою ``copy_from_user()`` копіюємо блок даних із простору користувача в постір ядра і в кінці зсовуємо курсор та записуємо його довжину:
+
+static ssize_t cdev_write(struct file *file, const char __user *buf,
+			  size_t count, loff_t *loff)
+{
+	struct ftree_item *item = ftree_get(&my_tree, file);
+	if (NULL == item) {
+		MOD_DEBUG(KERN_DEBUG, "Write ERROR");
+		return -EBADF;
 	}
-  }
 
-- Для операцій зі списком було додано 3 функції:
-``list_add_arg()`` - додавання аргумента до списку:
-
-.. code-block::
-
-  static void list_add_arg(struct result *res, struct list_head *list_name, long int arg)
-  {
-	res = kmalloc(sizeof(*res), GFP_ATOMIC);
-	res->num = arg;
-	list_add(&res->list, list_name);
-  }
-
-``list_print()`` - роздрукування списка:
-
-.. code-block::
-
-  static void list_print(struct list_head *name_list)
-  {
-	struct result *temp;
-	list_for_each_entry(temp, name_list, list) {
-		printk(KERN_NOTICE "list_arg = %li (%li)", temp->num, temp->num % 11);
+	char *buf_m = kzalloc(sizeof(*buf_m) * count, GFP_KERNEL);
+	if (NULL == buf_m) {
+		MOD_DEBUG(KERN_DEBUG, "Write ERROR");
+		return -EBADF;
 	}
-  }
-
-та ``list_destroy()`` - руйнування(видалити) списка:
-
-.. code-block::
-
-  static void list_destroy(struct list_head *name_list)
-  {
-	struct result *cursor, *tmp;
-	list_for_each_entry_safe(cursor, tmp, name_list, list) {
-		list_del(&cursor->list);
-		kfree(cursor);
+	item->buffer = buf_m;
+	
+	if(copy_from_user(item->buffer + *loff, buf, count) != 0) {
+		MOD_DEBUG(KERN_DEBUG, "Failed to write file");
+		return -EFAULT;
 	}
-  }
+	*loff += count;
+	MOD_DEBUG(KERN_INFO, "buffer = %s | %li", item->buffer, strlen(item->buffer));
 
-- Далі реалізовуємо ``workqueue``. Для початку ініціалізуємо його:
-
-.. code-block::
-
-  struct delayed_work work;
-  INIT_DELAYED_WORK(&work, work_func);
-
-та запускаємо за допомогою виконується аналогічно до таймерів функція schedule_delayed_work(), де перший аргумент є робота, яку необхідно виконати, а другим - кількість ``jiffies`` для очікування виконання роботи:
-
-.. code-block::
-
-  schedule_delayed_work(&work, 1);
-
-- Далі виконуються аналогічно схожі функції з таймером для ``workqueue``:
-
-.. code-block::
-
-  void work_func(struct work_struct *data)
-  {
-	if ((jiffies % 11) == 0) {
-		printk(KERN_INFO "Timer stopiing: %li (%li)\n", jiffies, jiffies % 11);
-		flags.work_run = 0;
-	} else {
-		list_add_arg(work_ptr, &res_list1.list, jiffies);
-		schedule_delayed_work(&work, 17);
+	if(item->length < *loff) {
+		item->length = *loff;
 	}
-  }
+	return count;
+}
 
-- Результатом роботи є:
-для платформи ``х86`` :
+- Для зчитування виконуємо зворотню функцію copy_to_user(), яка копіює блок даних із простору ядра в простір користувача відносно значення ``loff_t *loff``. 
 
-.. image:: img/lab4_x86.png
+static ssize_t cdev_read(struct file *file, char __user *buf,
+			 size_t count, loff_t *loff)
+{
+	struct ftree_item *item = ftree_get(&my_tree, file);
+	if (NULL == item) {
+		return -EBADF;
+	}
+	if(*loff >= item->length) {
+		MOD_DEBUG(KERN_DEBUG, "Read pointer above file size");
+		return -ENOMEM;
+	}
+	if(*loff + count > item->length) {
+		count = item->length - *loff;
+	}
+	if(copy_to_user(buf, item->buffer + *loff, count)) {
+		MOD_DEBUG(KERN_DEBUG, "Failed to read file");
+		return -EFAULT;
+	}
+	*loff += count;
+	return count;
+}
 
-та для платформи ``arm`` :
+- Далі було реалізовано функцію ``cdev_llseek()``, за допомогою якої можна змінити місце курсора:
 
-.. image:: img/lab4_arm.png
+static loff_t cdev_llseek(struct file *file, loff_t offset, int origin)
+{
+	struct ftree_item *item = ftree_get(&my_tree, file);
+	if (NULL == item)
+		return -EBADF;
+	loff_t newpos;
+	switch(origin) {
+	case SEEK_SET:
+		newpos = offset;
+		break;
+	case SEEK_CUR:
+		newpos = offset + file->f_pos;
+		break;
+	case SEEK_END:
+		newpos = item->length + offset;
+		break;
+	default:
+		MOD_DEBUG(KERN_DEBUG, "Macross name is incorrect");
+		return -EINVAL;
+		break;
+	}
+	if(newpos < 0) {
+		return -EINVAL;
+	}
+	file->f_pos = newpos;
+	return newpos;
+}
+
+- Останньою функцією є ``cdev_ioctl()``. За допомогою неї можна з викликом макроса LENGTH можна завантажити розмір буфера, і за допомогою BUFFER виконується завантаження самого рядка(буфера) із простору користувача. Для такої реалізації було використано ``_IOW`` (перший аргумент описує до якої підсистеми застосовується ``ioctl``, другий аргумент ідентифікує ``ioctl``, третім аргументом є типом переданого параметру):
+
+#define LENGTH _IOW('i', 0, int *)
+#define BUFFER _IOW('i', 1, char *)
+
+static long cdev_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
+{
+	struct ftree_item *item = ftree_get(&my_tree, file);
+	if (NULL == item)
+		return -EBADF;
+	switch(cmd) {
+	case BUFFER:
+		MOD_DEBUG(KERN_INFO, "Flag BUFFER:");
+		char *buf = kzalloc(sizeof(*buf) * item->length, GFP_KERNEL);
+		if (NULL == buf) {
+			MOD_DEBUG(KERN_DEBUG, "Write ERROR");
+			return -EBADF;
+		}
+		item->buffer = buf;
+		if(copy_from_user(item->buffer, (char *)arg, item->length) != 0) {
+			MOD_DEBUG(KERN_DEBUG, "Failed to write file");
+			return -EFAULT;
+		}
+		MOD_DEBUG(KERN_INFO, "BUFFER = %s", item->buffer);
+		break;
+	case LENGTH:
+		MOD_DEBUG(KERN_INFO, "Flag LENGTH:");
+		item->length = arg;
+		MOD_DEBUG(KERN_INFO, "LENGTH = %li", item->length);
+		break;
+	default:
+		return -ENOTTY;
+	}
+	return 0;
+}
+
+- В кінці необхідно прибирати за собою, тому для цього виконуємо наступне:
+
+static void module_cleanup(void)
+{
+	// notice: deallocations happen in *reverse* order
+	if(alloc_flags.dev_registered) {
+		device_destroy(hive_class, hive_dev);
+	}
+	if(alloc_flags.class_created)  {
+		class_unregister(hive_class);
+		class_destroy(hive_class);
+	}
+	if (alloc_flags.cdev_added) {
+		cdev_del(&hive_cdev);
+	}
+	if (alloc_flags.dev_created) {
+		unregister_chrdev_region(hive_dev, 1);
+	}
+	// paranoid cleanup (afterwards to ensure all fops ended)
+	struct ftree_item *item;
+	struct rb_node *rbp = rb_first(&my_tree);
+	struct rb_node *rb_l = rb_last(&my_tree);
+	while(rbp != rb_l) {
+		item = rb_entry_safe(rbp, struct ftree_item, node);
+		ftree_rm(item);
+		rbp = rb_next(rbp);
+	}
+}
+
+- В кінці було додано для створення класу пристроїв та створення пристрою і його реалізації за допомогою sysfs:
+	
+static struct class *hive_class = NULL;
 
 
---------------------
+if ((hive_class = class_create(THIS_MODULE, "hive_class")) == NULL) {
+	unregister_chrdev_region(hive_dev, 1);
+	return -1;
+}
+alloc_flags.class_created = 1;
+if (device_create(hive_class, NULL, hive_dev, NULL, "hive_dev") == NULL) {
+	class_destroy(hive_class);
+	unregister_chrdev_region(hive_dev, 1);
+	return -1;
+}
+alloc_flags.dev_registered = 1;
 
-**Висновок:**
+- Було додали тестовий файл, те було протестовано флаги, запису/зчитування, відкривання/закривання файлу, та запис за допомогою функції ioctl(). Результати можна побачити нижче:
 
-Отже, з рисунку платформи ``arm`` можна зробити висновок:
 
-- функція ``work`` та ``таймер'' мають синхронізацію (спочатку виконувався ворк(4324 ``jiffies`` ), далі таймер(4339 ``jiffies`` ), після чого знову ворк(4342 ``jiffies`` ) і т.д.;
 
-- різниця між кожним наступним записаним значенням ``jiffies`` у ворка або таймера дорівнює 18, що є вірним результатом;
 
-- ворк та таймер зупинився на значенні кратному 11, що є таком вірним результатом.
-
-Звідси можна сказати, що результати здійснились очікуванним значенням. Аналогічним висновком є для платформи ``x86`` .
