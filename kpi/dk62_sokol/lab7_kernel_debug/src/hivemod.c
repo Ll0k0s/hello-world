@@ -9,10 +9,12 @@
 #include <linux/rbtree.h>
 #include <linux/uaccess.h>
 #include <linux/ioctl.h>
+#include <linux/list.h>
+#include <linux/debugfs.h>
 
 MODULE_DESCRIPTION("Character device demo");
 MODULE_AUTHOR("Yaroslav Sokol");
-MODULE_VERSION("0.2");
+MODULE_VERSION("0.3");
 MODULE_LICENSE("Dual MIT/GPL");
 
 /**
@@ -25,6 +27,8 @@ MODULE_LICENSE("Dual MIT/GPL");
 #define MOD_DEBUG(level, fmt, ...) \
 	{printk(level "%s: " fmt "\n", THIS_MODULE->name,##__VA_ARGS__);}
 
+#define DIR "hivefold"
+#define FILE "hive"
 
 #define  MODULE_CLASS_NAME  "hive_cdev_class"
 
@@ -41,6 +45,10 @@ struct alloc_status {
 // start with everything non-done
 static struct alloc_status alloc_flags = { 0 };
 struct rb_root my_tree = RB_ROOT;
+
+struct dentry *dfs, *parent_debug, *sum_entry, *add_entry, *test_entry;
+struct debugfs_blob_wrapper *myblob;
+static u32 sum = 0;
 
 /**
  * struct ftree_item - stores data for each descriptor
@@ -340,6 +348,12 @@ static long cdev_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 	return 0;
 }
 
+static int add_write_op(void *data, u64 value)
+{
+    sum += value;
+	return 0;
+}
+
 static struct file_operations hive_fops = {
 	.open = &cdev_open,
 	.release = &cdev_release,
@@ -350,6 +364,8 @@ static struct file_operations hive_fops = {
 	// required to prevent module unloading while fops are in use
 	.owner = THIS_MODULE,
 };
+
+DEFINE_SIMPLE_ATTRIBUTE(add_fops, NULL, add_write_op, "%llu\n");
 
 static void module_cleanup(void)
 {
@@ -376,6 +392,7 @@ static void module_cleanup(void)
 		ftree_rm(item);
 		rbp = rb_next(rbp);
 	}
+	debugfs_remove_recursive(parent_debug);
 }
 
 static int __init cdevmod_init(void)
@@ -423,6 +440,46 @@ static int __init cdevmod_init(void)
 	alloc_flags.dev_registered = 1;
 
 	MOD_DEBUG(KERN_DEBUG, "This hive has %lu bees", 2 + jiffies % 8);
+
+	parent_debug = debugfs_create_dir("hive", NULL);
+
+	if (-ENODEV == parent_debug) {
+		return -ENOMEM;
+	}
+
+	add_entry = debugfs_create_file("add", 0222, parent_debug, NULL, &add_fops);
+    	if (add_entry == NULL) {
+        	// Abort module load.
+        	printk(KERN_ALERT "debugfs_example: failed to create\n");
+        	return -1;
+    	}
+		
+	test_entry = debugfs_create_blob("test", 0777, parent_debug, myblob);
+
+	if (test_entry == NULL) {
+		MOD_DEBUG(KERN_DEBUG, "DebugFS file NOT created");
+		return -EINVAL;
+	}
+
+	myblob = kmalloc(sizeof(struct debugfs_blob_wrapper), GFP_KERNEL);
+
+	myblob->data = (void *)magic_phrase;
+	myblob->size = buffsize/2;
+
+	if (myblob == NULL) {
+		return -ENOMEM;
+	}
+	// fill the rest
+	
+	sum_entry = debugfs_create_u32("sum", 0777, parent_debug, &sum);
+ 	if (sum_entry == NULL) {
+        	// Abort module load.
+        	printk(KERN_ALERT "debugfs_example: filed to create\n");
+        	return -1;
+   	 }
+
+	MOD_DEBUG(KERN_DEBUG, "DebugFS file created");
+
 	return 0;
 
 err_handler:
@@ -433,6 +490,7 @@ err_handler:
 static void __exit cdevmod_exit(void)
 {
 	module_cleanup();
+	MOD_DEBUG(KERN_DEBUG, "DebugFS file created %d", sum);
 	MOD_DEBUG(KERN_DEBUG, "All honey reclaimed");
 
 }

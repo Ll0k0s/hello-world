@@ -9,6 +9,7 @@
 
 #define LENGTH _IOW('i', 0, int *)
 #define BUFFER _IOW('i', 1, char *)
+
 int main()
 {
 	char *devname = "/dev/hive_dev";
@@ -22,16 +23,16 @@ int main()
 	offset = write(f1, magic_p, sizeof(magic_p));
 
 	lseek(f1, 0, SEEK_SET);
-	offset = read(f1, test_buf, 2 * sizeof(magic_p));
+	offset = read(f1, test_buf, sizeof(magic_p));
 	printf("result1 = %s | size = %i\n", test_buf, strlen(test_buf));
 
 	lseek(f1, 0, SEEK_SET);
 	lseek(f1, 5, SEEK_CUR);
-	offset = read(f1, test_buf, 2 * sizeof(magic_p));
+	offset = read(f1, test_buf, sizeof(magic_p));
 	printf("result2 = %s | size = %i\n", test_buf, strlen(test_buf));
 
 	lseek(f1, -10, SEEK_END);
-	offset = read(f1, test_buf, 2 * sizeof(magic_p));
+	offset = read(f1, test_buf, sizeof(magic_p));
 	printf("result3 = %s | size = %i\n", test_buf, strlen(test_buf));
 
 	close(f1);

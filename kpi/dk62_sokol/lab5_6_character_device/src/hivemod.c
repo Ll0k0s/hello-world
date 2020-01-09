@@ -25,12 +25,13 @@ MODULE_LICENSE("Dual MIT/GPL");
 #define MOD_DEBUG(level, fmt, ...) \
 	{printk(level "%s: " fmt "\n", THIS_MODULE->name,##__VA_ARGS__);}
 
+
+#define  MODULE_CLASS_NAME  "hive_cdev_class"
+
 /**
  * struct alloc_status - bit field, stores resource allocation flags
  * @dev_created: character device has been successfully created
  */
-#define  MODULE_CLASS_NAME  "hive_cdev_class"
-
 struct alloc_status {
 	unsigned long dev_created : 1;
 	unsigned long cdev_added : 1;
@@ -39,6 +40,7 @@ struct alloc_status {
 };
 // start with everything non-done
 static struct alloc_status alloc_flags = { 0 };
+struct rb_root my_tree = RB_ROOT;
 
 /**
  * struct ftree_item - stores data for each descriptor
@@ -54,9 +56,6 @@ static struct alloc_status alloc_flags = { 0 };
  * lookup through list.
  * change this to proper associative array or tree
  */
-
-struct rb_root my_tree = RB_ROOT;
-
 struct ftree_item {
 	struct rb_node node;
 	struct file *file;
@@ -66,8 +65,7 @@ struct ftree_item {
 	long wroffset;
 };
 
-
-static char *magic_phrase = "hello";
+static char *magic_phrase;
 module_param(magic_phrase, charp, 0);
 MODULE_PARM_DESC(magic_phrase, "Magic phrase");
 static char *devname = THIS_MODULE->name;
@@ -84,9 +82,15 @@ dev_t hive_dev = 0;	// Stores our device handle
 static struct cdev hive_cdev; // scull-initialized
 static struct class *hive_class = NULL;
 
+/**
+ * tree_insert() - insert item to tree
+ * @root:      pointer to root 
+ * @hive_item: item of struct hive_item
+ */
 static int rb_insert(struct rb_root *root, struct ftree_item *item)
 {
 	struct rb_node **new = &(root->rb_node), *parent = NULL;
+	/* Figure out where to put new node */
 	while (*new) {
 		struct ftree_item *this = container_of(*new, struct ftree_item, node);
 		int result = memcmp(item->file, this->file, sizeof(struct file));
@@ -98,6 +102,7 @@ static int rb_insert(struct rb_root *root, struct ftree_item *item)
 		} else
 			return 1;
 	}
+	/* Add new node and rebalance tree. */
 	rb_link_node(&item->node, parent, new);
 	rb_insert_color(&item->node, root);
 	return 0;
@@ -105,7 +110,7 @@ static int rb_insert(struct rb_root *root, struct ftree_item *item)
 
 /**
  * hive_flist_new() - creates list item having buffer
- * @buffer_size: numer of characters in buffer
+ *
  */
 static inline struct ftree_item *ftree_new(void)
 {
@@ -156,7 +161,6 @@ static struct ftree_item *ftree_get(struct rb_root *root, struct file *file)
 	return NULL;
 }
 
-// For more, see LKD 3rd ed. chapter 13
 /**
  * cdev_open() - callback for open() file operation
  * @inode: information to manipulate the file (unused)
@@ -200,9 +204,9 @@ static int cdev_release(struct inode *inode, struct file *file)
 /**
  * cdev_read() - called on file read() operation
  * @file: VFS file opened by a process
- * @buf:
- * @count:
- * @loff:
+ * @buf:   buffer provided from userspace
+ * @count: bytes requested to read in buffer
+ * @loff:  current position in the file
  */
 static ssize_t cdev_read(struct file *file, char __user *buf,
 			 size_t count, loff_t *loff)
@@ -228,11 +232,10 @@ static ssize_t cdev_read(struct file *file, char __user *buf,
 
 /**
  * cdev_write() - callback for file write() operation
- * @file: VFS file opened by a process
- * @buf:
- * @count:
-
- * @loff:
+ * @file:  VFS file opened by a process
+ * @buf:   buffer provided from userspace
+ * @count: bytes requested to write from buffer
+ * @loff:  current position in the file
  */
 static ssize_t cdev_write(struct file *file, const char __user *buf,
 			  size_t count, loff_t *loff)
@@ -263,6 +266,12 @@ static ssize_t cdev_write(struct file *file, const char __user *buf,
 	return count;
 }
 
+/**
+ * cdev_lseek - callback lseek (!test!)
+ * @file: file pointer
+ * @offset: requested offset to be set the file
+ * @origin: SEEK_SET, SEEK_CUR, SEEK_END
+ */
 static loff_t cdev_llseek(struct file *file, loff_t offset, int origin)
 {
 	struct ftree_item *item = ftree_get(&my_tree, file);
@@ -294,6 +303,12 @@ static loff_t cdev_llseek(struct file *file, loff_t offset, int origin)
 #define LENGTH _IOW('i', 0, int *)
 #define BUFFER _IOW('i', 1, char *)
 
+/**
+ * cdev_ioctl - callback ioctl (!test!)
+ * @file:        file pointer
+ * @cmd:   BUFFER, LENGTH
+ * @arg: perameter from userspace
+ */
 static long cdev_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 {
 	struct ftree_item *item = ftree_get(&my_tree, file);
