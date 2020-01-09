@@ -40,37 +40,43 @@ GDB може виконувати дії чотирьох основних ти�
 
 * Далі створюємо конфігураційний файл Kconfig:
 
-#
-# hivemod as part of kernel source
-#
+.. code-block::
 
-menu "hivemod Driver"
+  #
+  # hivemod as part of kernel source
+  #
 
-config HIVEMOD
+  menu "hivemod Driver"
+
+  config HIVEMOD
         tristate "hivemod module"
         default y
         help
-    hivemod kernel module integrated as part of kernel source.
+  hivemod kernel module integrated as part of kernel source.
 
-endmenu
+  endmenu
 
-та Makefile:
+* та Makefile:
 
-obj-$(CONFIG_HIVEMOD) += hivemod.o
-MY_CFLAGS += -g -DDEBUG
-ccflags-y += ${MY_CFLAGS}
-CC += ${MY_CFLAGS}
+.. code-block::
 
-all:
-  make -C /lib/modules/$(shell uname -r)/build M=$(PWD) modules
+  obj-$(CONFIG_HIVEMOD) += hivemod.o
+  MY_CFLAGS += -g -DDEBUG
+  ccflags-y += ${MY_CFLAGS}
+  CC += ${MY_CFLAGS}
 
-debug:
-  make -C /lib/modules/$(shell uname -r)/build M=$(PWD) modules EXTRA_CFLAGS="$(MY_CFLAGS)"
+  all:
+    make -C /lib/modules/$(shell uname -r)/build M=$(PWD) modules
 
-clean:
-  make -C /lib/modules/$(shell uname -r)/build M=$(PWD) clean
+  debug:
+    make -C /lib/modules/$(shell uname -r)/build M=$(PWD) modules EXTRA_CFLAGS="$(MY_CFLAGS)"
 
-Наступним кроком є запуском середовища qemu. Тому для цього використовуємо наступну команду:
+  clean:
+    make -C /lib/modules/$(shell uname -r)/build M=$(PWD) clean
+
+
+
+* Наступним кроком є запуском середовища qemu. Тому для цього використовуємо наступну команду:
 
 qemu-system-x86_64 -kernel obj/linux-x86-alldefconfig/arch/x86_64/boot/bzImage
 -initrd obj/initramfs-busybox-x86.cpio.gz -nographic -append "console=ttyS0 nokaslr" -enable-kvm -S -s
